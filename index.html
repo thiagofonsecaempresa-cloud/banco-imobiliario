@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#123b32">
+<title>Banco Imobiliário • Banco</title>
+<link rel="manifest" href="manifest.json">
+<style>
+:root{--green:#123b32;--green2:#1d5a49;--paper:#f7f5ef;--ink:#17231f;--muted:#65716b;--red:#b63b3b;--line:#e2e4dc;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:var(--green);color:white;padding:20px 16px 18px;border-radius:0 0 22px 22px}
+header .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:22px;margin:0}header p{margin:5px 0 0;color:#d6e5dd;font-size:13px}
+main{max-width:760px;margin:auto;padding:16px;display:grid;gap:14px}
+.card{background:white;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 3px 12px #152a1a08}
+h2{font-size:16px;margin:0 0 12px}
+label{display:block;font-size:13px;font-weight:650;color:var(--muted);margin:10px 0 5px}
+input,select,button{font:inherit}input,select{width:100%;padding:12px;border:1px solid #d4d9d2;border-radius:11px;background:#fff;color:var(--ink);min-height:46px}
+button{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;min-height:44px}
+.primary{background:var(--green2);color:#fff}.secondary{background:#edf2ed;color:var(--green)}.danger{background:#fff0ef;color:var(--red)}.small{padding:8px 10px;min-height:36px;font-size:13px}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1;min-width:0}.wrap{flex-wrap:wrap}
+.players{display:grid;gap:8px}
+.player{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:13px}
+.player .name{font-weight:750}.balance{font-size:20px;font-weight:800;color:var(--green);white-space:nowrap}.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.voice{background:var(--green);color:white;width:100%;padding:18px;font-size:17px;border-radius:15px}
+.voice.listening{background:#9b2f2f;animation:pulse 1.4s infinite}
+@keyframes pulse{50%{opacity:.75}}
+#voiceStatus{font-size:13px;color:var(--muted);margin-top:9px;min-height:18px}
+#transcript{font-size:17px;font-weight:650;min-height:24px;margin:8px 0}
+.notice{background:#fff7df;border:1px solid #f1dfa2;padding:11px;border-radius:12px;font-size:13px;line-height:1.45}
+.history{display:grid;gap:8px}.event{padding:10px 0;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}.event:last-child{border-bottom:0}.event strong{display:block;font-size:14px}.event small{color:var(--muted)}
+.hidden{display:none!important}.muted{color:var(--muted);font-size:13px}.footer{text-align:center;color:var(--muted);font-size:12px;padding:8px 0 20px}
+@media(min-width:650px){main{grid-template-columns:1fr 1fr}.wide{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header><div class="top"><div><h1>🏦 Banco Imobiliário</h1><p>O banco da partida, sem a maquininha teimosa.</p></div><button id="newGame" class="secondary small">Nova partida</button></div></header>
+<main>
+<section class="card wide">
+<h2>🎙️ Banco por voz</h2>
+<div class="notice">Toque no microfone e fale uma transação, por exemplo: <b>“Júlio paga 100 para Thiago”</b>, <b>“Thiago recebe 200 do banco”</b> ou <b>“Júlio paga 150 ao banco”</b>. A transação é aplicada automaticamente quando a frase é entendida. Confira o histórico para desfazer um erro.</div>
+<div style="height:12px"></div>
+<button id="voiceBtn" class="voice">🎙️ Falar transação</button>
+<div id="voiceStatus" aria-live="polite">Pronto para ouvir.</div>
+<div id="transcript"></div>
+<div class="muted">O reconhecimento de voz depende do navegador e pode exigir internet. No iPhone, teste pelo Safari. A digitação continua disponível como alternativa.</div>
+</section>
+<section class="card">
+<h2>👥 Jogadores e saldos</h2>
+<div class="row"><div><label for="initialBalance">Saldo inicial de cada jogador</label><input id="initialBalance" type="number" min="0" step="1" value="25000"></div></div>
+<div class="row"><div><label for="playerName">Nome do jogador</label><input id="playerName" placeholder="Ex.: Júlio" maxlength="30"></div><button id="addPlayer" class="primary" style="align-self:end;flex:0 0 auto">Adicionar</button></div>
+<div id="players" class="players" style="margin-top:12px"></div>
+</section>
+<section class="card">
+<h2>💸 Lançamento manual</h2>
+<label for="from">Quem paga / origem</label><select id="from"></select>
+<label for="to">Quem recebe / destino</label><select id="to"></select>
+<label for="amount">Valor</label><input id="amount" type="number" min="1" step="1" placeholder="Ex.: 100">
+<label for="description">Observação (opcional)</label><input id="description" placeholder="Aluguel, imposto...">
+<button id="transfer" class="primary" style="width:100%;margin-top:12px">Registrar transação</button>
+<div class="row" style="margin-top:8px"><button id="bankPays" class="secondary">Banco paga jogador</button><button id="playerPaysBank" class="secondary">Jogador paga banco</button></div>
+</section>
+<section class="card wide">
+<div class="row"><h2 style="margin:0">📜 Histórico da partida</h2><button id="undo" class="secondary small" style="flex:0 0 auto">Desfazer última</button></div>
+<div id="history" class="history" style="margin-top:10px"></div>
+<div class="row wrap" style="margin-top:10px"><button id="export" class="secondary">Exportar backup</button><button id="reset" class="danger">Zerar saldos</button></div>
+<div class="muted" style="margin-top:8px">Os dados ficam salvos neste navegador e neste aparelho. O saldo inicial vale para os próximos jogadores adicionados; alterar esse campo não muda os saldos atuais. Use “Exportar backup” antes de limpar os dados do navegador ou trocar de celular.</div>
+</section>
+</main>
+<div class="footer">Versão inicial • Saldo e histórico guardados localmente neste aparelho</div>
+<script>
+const KEY='banco-imobiliario-v1';
+const $=id=>document.getElementById(id);
+let state={players:[],history:[],initial:25000};
+function money(n){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(n)}
+function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function render(){
+ $('initialBalance').value=state.initial;
+ $('players').innerHTML=state.players.length?state.players.map(p=>`<div class="player"><div><div class="name">${escapeHtml(p.name)}</div><div class="sub">${state.history.filter(h=>h.from===p.id||h.to===p.id).length} movimentações</div></div><div style="text-align:right"><div class="balance">${money(p.balance)}</div><button class="danger small" data-remove="${p.id}">Remover</button></div></div>`).join(''):'<div class="muted">Adicione quantos jogadores quiser. Cada novo jogador recebe o saldo inicial configurado acima.</div>';
+ const opts='<option value="bank">Banco</option>'+state.players.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+ ['from','to'].forEach(id=>{let old=$(id).value;$(id).innerHTML=opts;if([...$(id).options].some(o=>o.value===old))$(id).value=old});
+ $('history').innerHTML=state.history.length?state.history.slice().reverse().map(h=>`<div class="event"><div><strong>${escapeHtml(h.text)}</strong><small>${new Date(h.time).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})} · ${escapeHtml(h.note||'Transação')}</small></div><strong>${money(h.amount)}</strong></div>`).join(''):'<div class="muted">Nenhuma transação registrada ainda.</div>';
+ $('undo').disabled=!state.history.length;
+ document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>removePlayer(b.dataset.remove));
+}
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.players)&&Array.isArray(s.history))state=s}catch(e){}render()}
+function addPlayer(name){name=(name||'').trim();if(!name)return alert('Digite o nome do jogador.');if(state.players.some(p=>p.name.toLowerCase()===name.toLowerCase()))return alert('Já existe um jogador com esse nome.');state.initial=Math.max(0,Number($('initialBalance').value)||0);state.players.push({id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),name,balance:state.initial});$('playerName').value='';save()}
+function removePlayer(id){const p=state.players.find(p=>p.id===id);if(!p)return;if(!confirm(`Remover ${p.name}? O histórico anterior será mantido, mas as transações futuras não poderão selecioná-lo.`))return;state.players=state.players.filter(p=>p.id!==id);save()}
+function player(id){return state.players.find(p=>p.id===id)}
+function transact(from,to,amount,note='Transação'){
+ amount=Number(amount);if(!Number.isFinite(amount)||amount<=0)return {ok:false,msg:'O valor precisa ser maior que zero.'};
+ if(from===to)return {ok:false,msg:'Escolha duas origens/destinos diferentes.'};
+ const fp=from==='bank'?null:player(from),tp=to==='bank'?null:player(to);
+ if(from!=='bank'&&!fp||to!=='bank'&&!tp)return {ok:false,msg:'Não encontrei um dos jogadores. Confira os nomes cadastrados.'};
+ if(fp&&fp.balance<amount)return {ok:false,msg:`Saldo insuficiente de ${fp.name}. Transação não realizada.`};
+ if(fp)fp.balance-=amount;if(tp)tp.balance+=amount;
+ const fromName=fp?fp.name:'Banco',toName=tp?tp.name:'Banco';
+ state.history.push({id:Date.now()+Math.random(),from,to,amount,note,text:`${fromName} → ${toName}: ${money(amount)}`,time:new Date().toISOString(),beforeFrom:fp?fp.balance+amount:null,beforeTo:tp?tp.balance-amount:null});
+ save();return {ok:true,msg:`Registrado: ${fromName} pagou ${money(amount)} para ${toName}.`};
+}
+function undo(){const h=state.history.pop();if(!h)return;const fp=h.from==='bank'?null:player(h.from),tp=h.to==='bank'?null:player(h.to);if(fp)fp.balance=h.beforeFrom;if(tp)tp.balance=h.beforeTo;save();$('voiceStatus').textContent='Última transação desfeita.'}
+function normalize(s){return s.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?]/g,' ').replace(/\s+/g,' ').trim()}
+function parseCommand(raw){
+ const s=normalize(raw);
+ const amountMatch=s.match(/\b(\d+(?:[.,]\d{1,2})?)\b/);
+ if(!amountMatch)return {error:'Não identifiquei o valor. Tente dizer “Júlio paga 100 para Thiago”.'};
+ const amount=Number(amountMatch[1].replace(',','.'));
+ let from=null,to=null,bankAction=false;
+ // Identify player names by longest matching registered name.
+ const matches=state.players.map(p=>({p,n:normalize(p.name)})).filter(x=>x.n&&s.includes(x.n)).sort((a,b)=>b.n.length-a.n.length);
+ const bankWords=/\b(banco|banco imobiliario)\b/.test(s);
+ const payPattern=/\b(paga|pagar|pagou|pague|transfere|transferir|manda|mandar|da|dar|entrega|entregar)\b/;
+ const receivePattern=/\b(recebe|receber|recebeu|ganha|ganhar)\b/;
+ if(bankWords){
+   const named=matches[0]?.p;
+   if(!named)return {error:'Diga também o nome do jogador, por exemplo “Júlio recebe 200 do banco”.'};
+   if(receivePattern.test(s)&&/banco/.test(s)){from='bank';to=named.id}
+   else if(payPattern.test(s)&&/banco/.test(s)){from=named.id;to='bank'}
+   else return {error:'Tente “Júlio recebe 200 do banco” ou “Júlio paga 150 ao banco”.'};
+ } else {
+   if(matches.length<2)return {error:'Não encontrei dois jogadores cadastrados nessa frase. Fale os nomes como estão no cadastro.'};
+   const first=matches.find(x=>s.indexOf(x.n)===Math.min(...matches.map(y=>s.indexOf(y.n))));
+   const rest=matches.filter(x=>x.p.id!==first.p.id);
+   const second=rest.sort((a,b)=>s.indexOf(a.n)-s.indexOf(b.n))[0];
+   const firstPos=s.indexOf(first.n), secondPos=s.indexOf(second.n);
+   const payPos=s.search(payPattern), receivePos=s.search(receivePattern);
+   if(receivePos>=0&& (payPos<0||receivePos<payPos)){from=second.p.id;to=first.p.id}
+   else {from=first.p.id;to=second.p.id}
+ }
+ return {from,to,amount};
+}
+let recognition=null;
+function speakStatus(msg){$('voiceStatus').textContent=msg}
+function processSpeech(raw){$('transcript').textContent='“'+raw+'”';const cmd=parseCommand(raw);if(cmd.error){speakStatus(cmd.error);return}const result=transact(cmd.from,cmd.to,cmd.amount,'Por voz: '+raw);speakStatus(result.msg)}
+function toggleVoice(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){speakStatus('Este navegador não oferece reconhecimento de voz. Tente abrir pelo Safari atualizado ou use o lançamento manual.');return}
+ if(recognition){recognition.stop();return}
+ recognition=new SR();recognition.lang='pt-BR';recognition.interimResults=true;recognition.continuous=false;
+ $('voiceBtn').classList.add('listening');$('voiceBtn').textContent='🔴 Ouvindo… toque para parar';speakStatus('Pode falar a transação.');
+ let finalText='';
+ recognition.onresult=e=>{let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)finalText+=t;else interim+=t}$('transcript').textContent=finalText||interim;if(finalText.trim()){processSpeech(finalText.trim());recognition.stop()}};
+ recognition.onerror=e=>speakStatus(e.error==='not-allowed'?'Permita o acesso ao microfone nas configurações do navegador.':'Não consegui reconhecer a fala ('+e.error+'). Tente novamente.');
+ recognition.onend=()=>{$('voiceBtn').classList.remove('listening');$('voiceBtn').textContent='🎙️ Falar transação';recognition=null;if(!finalText.trim()&&$('voiceStatus').textContent==='Pode falar a transação.')speakStatus('Não ouvi uma frase completa. Tente novamente.')};
+ recognition.start();
+}
+$('addPlayer').onclick=()=>addPlayer($('playerName').value);
+$('playerName').addEventListener('keydown',e=>{if(e.key==='Enter')addPlayer($('playerName').value)});
+$('initialBalance').onchange=()=>{state.initial=Math.max(0,Number($('initialBalance').value)||0);save()};
+$('transfer').onclick=()=>{const r=transact($('from').value,$('to').value,$('amount').value,$('description').value||'Manual');speakStatus(r.msg);if(r.ok){$('amount').value='';$('description').value=''}};
+$('bankPays').onclick=()=>{if($('from').value==='bank'){speakStatus('Selecione um jogador como destino.');return}const amount=$('amount').value;const r=transact('bank',$('from').value,amount,'Banco paga jogador');speakStatus(r.msg)};
+$('playerPaysBank').onclick=()=>{const id=$('from').value==='bank'?$('to').value:$('from').value;const r=transact(id,'bank',$('amount').value,'Pagamento ao banco');speakStatus(r.msg)};
+$('undo').onclick=undo;$('voiceBtn').onclick=toggleVoice;
+$('newGame').onclick=()=>{if(!confirm('Começar uma nova partida? Isso apaga jogadores, saldos e histórico deste aparelho.'))return;const initial=Math.max(0,Number($('initialBalance').value)||25000);state={players:[],history:[],initial};save();speakStatus('Nova partida pronta. Saldo inicial de '+money(initial)+' para cada jogador.');$('playerName').focus()};
+$('reset').onclick=()=>{if(!confirm('Zerar os saldos de todos os jogadores e apagar o histórico?'))return;state.players.forEach(p=>p.balance=state.initial);state.history=[];save();speakStatus('Saldos zerados.')};
+$('export').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='banco-imobiliario-backup.json';a.click();URL.revokeObjectURL(a.href)};
+load();
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body></html>

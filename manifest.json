@@ -1,0 +1,9 @@
+{
+  "name": "Banco Imobiliário - Banco da Partida",
+  "short_name": "Banco Imobiliário",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f5ef",
+  "theme_color": "#123b32",
+  "lang": "pt-BR"
+}
