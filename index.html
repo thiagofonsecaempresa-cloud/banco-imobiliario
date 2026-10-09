@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#123b32">
-<title>Banco Imobiliário • Banco</title>
+<meta name="author" content="Thiago Fonseca">
+<meta name="description" content="Banco digital para partidas de Banco Imobiliário. Criado por Thiago Fonseca.">
+<title>Banco Imobiliário • By Thiago Fonseca</title>
 <link rel="manifest" href="manifest.json">
 <style>
 :root{--green:#123b32;--green2:#1d5a49;--paper:#f7f5ef;--ink:#17231f;--muted:#65716b;--red:#b63b3b;--line:#e2e4dc;--white:#fff}
@@ -39,7 +41,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:poin
 <main>
 <section class="card wide">
 <h2>🎙️ Banco por voz</h2>
-<div class="notice">Toque no microfone e fale uma transação, por exemplo: <b>“Júlio paga 100 para Thiago”</b>, <b>“Thiago recebe 200 do banco”</b> ou <b>“Júlio paga 150 ao banco”</b>. A transação é aplicada automaticamente quando a frase é entendida. Confira o histórico para desfazer um erro.</div>
+<div class="notice">Toque no microfone e fale uma transação, por exemplo: <b>“Júlio paga 100 mil para Thiago”</b>, <b>“Thiago recebe 2 milhões do banco”</b> ou <b>“Júlio paga 150 mil ao banco”</b>. A transação é aplicada automaticamente quando a frase é entendida. Confira o histórico para desfazer um erro.</div>
 <div style="height:12px"></div>
 <button id="voiceBtn" class="voice">🎙️ Falar transação</button>
 <div id="voiceStatus" aria-live="polite">Pronto para ouvir.</div>
@@ -48,7 +50,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:poin
 </section>
 <section class="card">
 <h2>👥 Jogadores e saldos</h2>
-<div class="row"><div><label for="initialBalance">Saldo inicial de cada jogador</label><input id="initialBalance" type="number" min="0" step="1" value="25000"></div></div>
+<div class="row"><div><label for="initialBalance">Saldo inicial de cada jogador (padrão: R$ 25 milhões)</label><input id="initialBalance" type="number" min="0" step="1" value="25000000"></div></div>
 <div class="row"><div><label for="playerName">Nome do jogador</label><input id="playerName" placeholder="Ex.: Júlio" maxlength="30"></div><button id="addPlayer" class="primary" style="align-self:end;flex:0 0 auto">Adicionar</button></div>
 <div id="players" class="players" style="margin-top:12px"></div>
 </section>
@@ -56,7 +58,7 @@ button{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:poin
 <h2>💸 Lançamento manual</h2>
 <label for="from">Quem paga / origem</label><select id="from"></select>
 <label for="to">Quem recebe / destino</label><select id="to"></select>
-<label for="amount">Valor</label><input id="amount" type="number" min="1" step="1" placeholder="Ex.: 100">
+<label for="amount">Valor</label><input id="amount" type="number" min="1" step="1" placeholder="Ex.: 100000">
 <label for="description">Observação (opcional)</label><input id="description" placeholder="Aluguel, imposto...">
 <button id="transfer" class="primary" style="width:100%;margin-top:12px">Registrar transação</button>
 <div class="row" style="margin-top:8px"><button id="bankPays" class="secondary">Banco paga jogador</button><button id="playerPaysBank" class="secondary">Jogador paga banco</button></div>
@@ -68,11 +70,11 @@ button{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:poin
 <div class="muted" style="margin-top:8px">Os dados ficam salvos neste navegador e neste aparelho. O saldo inicial vale para os próximos jogadores adicionados; alterar esse campo não muda os saldos atuais. Use “Exportar backup” antes de limpar os dados do navegador ou trocar de celular.</div>
 </section>
 </main>
-<div class="footer">Versão inicial • Saldo e histórico guardados localmente neste aparelho</div>
+<div class="footer">Banco Imobiliário Digital · <strong>By Thiago Fonseca</strong><br>Saldo e histórico guardados localmente neste aparelho</div>
 <script>
-const KEY='banco-imobiliario-v1';
+const KEY='banco-imobiliario-v3';
 const $=id=>document.getElementById(id);
-let state={players:[],history:[],initial:25000};
+let state={players:[],history:[],initial:25000000};
 function money(n){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}).format(n)}
 function save(){localStorage.setItem(KEY,JSON.stringify(state));render()}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -102,31 +104,52 @@ function transact(from,to,amount,note='Transação'){
 }
 function undo(){const h=state.history.pop();if(!h)return;const fp=h.from==='bank'?null:player(h.from),tp=h.to==='bank'?null:player(h.to);if(fp)fp.balance=h.beforeFrom;if(tp)tp.balance=h.beforeTo;save();$('voiceStatus').textContent='Última transação desfeita.'}
 function normalize(s){return s.toLocaleLowerCase('pt-BR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[.,!?]/g,' ').replace(/\s+/g,' ').trim()}
+function parseSpokenAmount(s){
+ // Aceita "10 milhões", "10 milhão", "10 mil", "10 mil reais", "500 reais",
+ // além de números com separador decimal. O multiplicador vem depois do número.
+ const m=s.match(/\b(\d+(?:[.,]\d+)?)\s*(milhoes?|milhao|mil|reais|real)?\b/);
+ if(!m)return null;
+ let n=Number(m[1].replace(',','.'));
+ const unit=(m[2]||'').replace(/s$/,'');
+ if(unit==='milhao'||unit==='milhoes')n*=1000000;
+ else if(unit==='mil')n*=1000;
+ return Number.isFinite(n)&&n>0?Math.round(n):null;
+}
 function parseCommand(raw){
  const s=normalize(raw);
- const amountMatch=s.match(/\b(\d+(?:[.,]\d{1,2})?)\b/);
- if(!amountMatch)return {error:'Não identifiquei o valor. Tente dizer “Júlio paga 100 para Thiago”.'};
- const amount=Number(amountMatch[1].replace(',','.'));
- let from=null,to=null,bankAction=false;
- // Identify player names by longest matching registered name.
- const matches=state.players.map(p=>({p,n:normalize(p.name)})).filter(x=>x.n&&s.includes(x.n)).sort((a,b)=>b.n.length-a.n.length);
+ const amount=parseSpokenAmount(s);
+ if(!amount)return {error:'Não identifiquei o valor. Diga, por exemplo, “Júlio paga 10 milhões para Thiago”.'};
+ let from=null,to=null;
  const bankWords=/\b(banco|banco imobiliario)\b/.test(s);
- const payPattern=/\b(paga|pagar|pagou|pague|transfere|transferir|manda|mandar|da|dar|entrega|entregar)\b/;
+ const payPattern=/\b(paga|pagar|pagou|pague|transfere|transferir|manda|mandar|da|dar|entrega|entregar|passa|passar|envia|enviar)\b/;
  const receivePattern=/\b(recebe|receber|recebeu|ganha|ganhar)\b/;
+ // Match full registered names first. If speech only catches a nickname/prefix such as "Ti",
+ // resolve it to a unique registered name beginning with that prefix.
+ const registered=state.players.map(p=>({p,n:normalize(p.name)}));
+ let matches=registered.filter(x=>x.n && new RegExp('(^|\\s)'+x.n.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|\\s)').test(s))
+   .map(x=>({...x, pos:s.indexOf(x.n), full:true}));
+ const tokens=s.split(' ').filter(t=>t.length>=2);
+ for(const token of tokens){
+   const candidates=registered.filter(x=>x.n.split(' ').some(part=>part.startsWith(token)));
+   if(candidates.length===1 && !matches.some(m=>m.p.id===candidates[0].p.id)){
+     matches.push({...candidates[0],pos:s.indexOf(token),full:false,token});
+   }
+ }
+ matches.sort((a,b)=>a.pos-b.pos || (b.full?1:0)-(a.full?1:0));
+ // Collapse duplicate matches for same player and prefer the full-name match.
+ matches=matches.reduce((acc,x)=>{const old=acc.find(y=>y.p.id===x.p.id);if(!old)acc.push(x);else if(x.full&&!old.full){acc[acc.indexOf(old)]=x}return acc},[]);
+ matches.sort((a,b)=>a.pos-b.pos);
  if(bankWords){
    const named=matches[0]?.p;
-   if(!named)return {error:'Diga também o nome do jogador, por exemplo “Júlio recebe 200 do banco”.'};
+   if(!named)return {error:'Não encontrei o jogador. Confira o cadastro ou diga o nome de forma mais clara.'};
    if(receivePattern.test(s)&&/banco/.test(s)){from='bank';to=named.id}
    else if(payPattern.test(s)&&/banco/.test(s)){from=named.id;to='bank'}
-   else return {error:'Tente “Júlio recebe 200 do banco” ou “Júlio paga 150 ao banco”.'};
+   else return {error:'Tente “Júlio recebe 2 milhões do banco” ou “Júlio paga 150 mil ao banco”.'};
  } else {
-   if(matches.length<2)return {error:'Não encontrei dois jogadores cadastrados nessa frase. Fale os nomes como estão no cadastro.'};
-   const first=matches.find(x=>s.indexOf(x.n)===Math.min(...matches.map(y=>s.indexOf(y.n))));
-   const rest=matches.filter(x=>x.p.id!==first.p.id);
-   const second=rest.sort((a,b)=>s.indexOf(a.n)-s.indexOf(b.n))[0];
-   const firstPos=s.indexOf(first.n), secondPos=s.indexOf(second.n);
+   if(matches.length<2)return {error:'Não encontrei os dois jogadores nessa frase. Cadastre os nomes e tente falar os nomes completos.'};
+   const first=matches[0], second=matches.find(x=>x.p.id!==first.p.id);
    const payPos=s.search(payPattern), receivePos=s.search(receivePattern);
-   if(receivePos>=0&& (payPos<0||receivePos<payPos)){from=second.p.id;to=first.p.id}
+   if(receivePos>=0 && (payPos<0||receivePos<payPos)){from=second.p.id;to=first.p.id}
    else {from=first.p.id;to=second.p.id}
  }
  return {from,to,amount};
@@ -153,7 +176,7 @@ $('transfer').onclick=()=>{const r=transact($('from').value,$('to').value,$('amo
 $('bankPays').onclick=()=>{if($('from').value==='bank'){speakStatus('Selecione um jogador como destino.');return}const amount=$('amount').value;const r=transact('bank',$('from').value,amount,'Banco paga jogador');speakStatus(r.msg)};
 $('playerPaysBank').onclick=()=>{const id=$('from').value==='bank'?$('to').value:$('from').value;const r=transact(id,'bank',$('amount').value,'Pagamento ao banco');speakStatus(r.msg)};
 $('undo').onclick=undo;$('voiceBtn').onclick=toggleVoice;
-$('newGame').onclick=()=>{if(!confirm('Começar uma nova partida? Isso apaga jogadores, saldos e histórico deste aparelho.'))return;const initial=Math.max(0,Number($('initialBalance').value)||25000);state={players:[],history:[],initial};save();speakStatus('Nova partida pronta. Saldo inicial de '+money(initial)+' para cada jogador.');$('playerName').focus()};
+$('newGame').onclick=()=>{if(!confirm('Começar uma nova partida? Isso apaga jogadores, saldos e histórico deste aparelho.'))return;const initial=Math.max(0,Number($('initialBalance').value)||25000000);state={players:[],history:[],initial};save();speakStatus('Nova partida pronta. Saldo inicial de '+money(initial)+' para cada jogador.');$('playerName').focus()};
 $('reset').onclick=()=>{if(!confirm('Zerar os saldos de todos os jogadores e apagar o histórico?'))return;state.players.forEach(p=>p.balance=state.initial);state.history=[];save();speakStatus('Saldos zerados.')};
 $('export').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='banco-imobiliario-backup.json';a.click();URL.revokeObjectURL(a.href)};
 load();
