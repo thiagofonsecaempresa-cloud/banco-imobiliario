@@ -21,7 +21,7 @@ label{display:block;font-size:13px;font-weight:650;color:var(--muted);margin:10p
 input,select,button{font:inherit}input,select{width:100%;padding:12px;border:1px solid #d4d9d2;border-radius:11px;background:#fff;color:var(--ink);min-height:46px}
 button{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;min-height:44px}
 .primary{background:var(--green2);color:#fff}.secondary{background:#edf2ed;color:var(--green)}.danger{background:#fff0ef;color:var(--red)}.small{padding:8px 10px;min-height:36px;font-size:13px}
-.row{display:flex;gap:8px;align-items:center}.row>*{flex:1;min-width:0}.wrap{flex-wrap:wrap}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1;min-width:0}.wrap{flex-wrap:wrap}.amount-parts{gap:7px}.amount-parts input{text-align:center;padding:10px 5px;font-size:18px;font-weight:700}
 .players{display:grid;gap:8px}
 .player{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:13px}
 .player .name{font-weight:750}.balance{font-size:20px;font-weight:800;color:var(--green);white-space:nowrap}.sub{font-size:12px;color:var(--muted);margin-top:2px}
@@ -58,7 +58,21 @@ button{border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:poin
 <h2>💸 Lançamento manual</h2>
 <label for="from">Quem paga / origem</label><select id="from"></select>
 <label for="to">Quem recebe / destino</label><select id="to"></select>
-<label for="amount">Valor</label><input id="amount" type="number" min="1" step="1" placeholder="Ex.: 100000">
+<label>Valor da transação</label>
+<div class="row amount-parts">
+<div><label for="amountMillions">Milhões</label><input id="amountMillions" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+<div><label for="amountThousands">Milhares</label><input id="amountThousands" type="number" min="0" max="999" step="1" inputmode="numeric" placeholder="000"></div>
+<div><label for="amountReais">Reais</label><input id="amountReais" type="number" min="0" max="999" step="1" inputmode="numeric" placeholder="000"></div>
+</div>
+<div class="muted" style="margin-top:6px">Exemplo: 25 milhões, 435 mil e zero reais = R$ 25.435.000.</div>
+<div class="row wrap" style="margin-top:9px">
+<button type="button" class="secondary small amount-shortcut" data-add="1000">+ 1 mil</button>
+<button type="button" class="secondary small amount-shortcut" data-add="10000">+ 10 mil</button>
+<button type="button" class="secondary small amount-shortcut" data-add="100000">+ 100 mil</button>
+<button type="button" class="secondary small amount-shortcut" data-add="1000000">+ 1 milhão</button>
+<button type="button" class="secondary small amount-shortcut" data-add="10000000">+ 10 milhões</button>
+</div>
+<input id="amount" type="hidden" value="">
 <label for="description">Observação (opcional)</label><input id="description" placeholder="Aluguel, imposto...">
 <button id="transfer" class="primary" style="width:100%;margin-top:12px">Registrar transação</button>
 <div class="row" style="margin-top:8px"><button id="bankPays" class="secondary">Banco paga jogador</button><button id="playerPaysBank" class="secondary">Jogador paga banco</button></div>
@@ -172,9 +186,16 @@ function toggleVoice(){
 $('addPlayer').onclick=()=>addPlayer($('playerName').value);
 $('playerName').addEventListener('keydown',e=>{if(e.key==='Enter')addPlayer($('playerName').value)});
 $('initialBalance').onchange=()=>{state.initial=Math.max(0,Number($('initialBalance').value)||0);save()};
-$('transfer').onclick=()=>{const r=transact($('from').value,$('to').value,$('amount').value,$('description').value||'Manual');speakStatus(r.msg);if(r.ok){$('amount').value='';$('description').value=''}};
-$('bankPays').onclick=()=>{if($('from').value==='bank'){speakStatus('Selecione um jogador como destino.');return}const amount=$('amount').value;const r=transact('bank',$('from').value,amount,'Banco paga jogador');speakStatus(r.msg)};
-$('playerPaysBank').onclick=()=>{const id=$('from').value==='bank'?$('to').value:$('from').value;const r=transact(id,'bank',$('amount').value,'Pagamento ao banco');speakStatus(r.msg)};
+
+
+
+function readManualAmount(){const millions=Math.max(0,Number($('amountMillions').value)||0);const thousands=Math.max(0,Math.min(999,Number($('amountThousands').value)||0));const reais=Math.max(0,Math.min(999,Number($('amountReais').value)||0));const amount=millions*1000000+thousands*1000+reais;$('amount').value=amount||'';return amount}
+function clearManualAmount(){$('amountMillions').value='';$('amountThousands').value='';$('amountReais').value='';$('amount').value=''}
+['amountMillions','amountThousands','amountReais'].forEach(id=>$(id).addEventListener('input',readManualAmount));
+document.querySelectorAll('.amount-shortcut').forEach(btn=>btn.onclick=()=>{const next=readManualAmount()+Number(btn.dataset.add);$('amountMillions').value=Math.floor(next/1000000)||'';$('amountThousands').value=Math.floor((next%1000000)/1000)||'';$('amountReais').value=next%1000||'';readManualAmount()});
+$('transfer').onclick=()=>{const amount=readManualAmount();const r=transact($('from').value,$('to').value,amount,$('description').value||'Manual');speakStatus(r.msg);if(r.ok){clearManualAmount();$('description').value=''}};
+$('bankPays').onclick=()=>{if($('from').value==='bank'){speakStatus('Selecione um jogador como destino.');return}const amount=readManualAmount();const r=transact('bank',$('from').value,amount,'Banco paga jogador');speakStatus(r.msg);if(r.ok)clearManualAmount()};
+$('playerPaysBank').onclick=()=>{const id=$('from').value==='bank'?$('to').value:$('from').value;const amount=readManualAmount();const r=transact(id,'bank',amount,'Pagamento ao banco');speakStatus(r.msg);if(r.ok)clearManualAmount()};
 $('undo').onclick=undo;$('voiceBtn').onclick=toggleVoice;
 $('newGame').onclick=()=>{if(!confirm('Começar uma nova partida? Isso apaga jogadores, saldos e histórico deste aparelho.'))return;const initial=Math.max(0,Number($('initialBalance').value)||25000000);state={players:[],history:[],initial};save();speakStatus('Nova partida pronta. Saldo inicial de '+money(initial)+' para cada jogador.');$('playerName').focus()};
 $('reset').onclick=()=>{if(!confirm('Zerar os saldos de todos os jogadores e apagar o histórico?'))return;state.players.forEach(p=>p.balance=state.initial);state.history=[];save();speakStatus('Saldos zerados.')};
